@@ -1,0 +1,8 @@
+{
+  "name": "Naranja",
+  "base": "dark",
+  "overrides": {
+    "promptBorder": "rgb(255,178,102)",
+    "promptBorderShimmer": "rgb(255,210,160)"
+  }
+}
