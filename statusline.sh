@@ -128,7 +128,7 @@ if used is not None:
 
     # Decision tree (Matt Pocock): the statusline can only answer the first
     # question -- "do you have smart zone left?". The other three depend on
-    # the session, so past the threshold it defers to /arbol.
+    # the session, so past the threshold it defers to /tree.
     # Two distinct risks: running out of WINDOW (%) and leaving the SMART
     # ZONE (absolute tokens). The most urgent one wins.
     if pct >= crit:
@@ -138,7 +138,7 @@ if used is not None:
     elif pct >= warn:
         hint = "window limit · /clear or /handoff"
     elif tok >= SZ * 0.8:
-        hint = "smart zone limit · /arbol"
+        hint = "smart zone limit · /tree"
     else:
         hint = None
 

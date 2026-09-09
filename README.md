@@ -5,7 +5,7 @@ and, when it matters, **what to do** about that context.
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /arbol
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /tree
 dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
 dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
@@ -22,10 +22,10 @@ cd claude-statusline
 ```
 
 Flags: `--with-theme` (also installs and activates the orange prompt-border theme),
-`--no-arbol` (skip the `/arbol` command), `--dry-run` (show what it would do, write nothing).
+`--no-tree` (skip the `/tree` command), `--dry-run` (show what it would do, write nothing).
 Honours `CLAUDE_CONFIG_DIR`; defaults to `~/.claude`.
 
-To revert: `./uninstall.sh` (add `--also-theme`, `--also-arbol` to remove those too).
+To revert: `./uninstall.sh` (add `--also-theme`, `--also-tree` to remove those too).
 
 The installer **backs up `settings.json`** before touching it and preserves every other key.
 If you already had a statusline configured, it says so before replacing it.
@@ -61,7 +61,7 @@ Conflating them is the easy mistake: "65% of context" is 130k tokens on a 200k w
 | Condition | Colour | Hint |
 |---|---|---|
 | `tok < 0.8·SZ` | green | — |
-| `tok ≥ 0.8·SZ` | yellow | smart zone limit · `/arbol` |
+| `tok ≥ 0.8·SZ` | yellow | smart zone limit · `/tree` |
 | `tok ≥ SZ` | yellow | dumb zone · `/clear` if disposable, else `/handoff` |
 | `tok ≥ 1.5·SZ` | red | same as above |
 | `pct ≥ 80` | yellow | window limit · `/clear` or `/handoff` |
@@ -108,7 +108,7 @@ top of the script.
 
 `docs/design.md` carries the full reasoning: what the statusline payload does
 and does not contain, why the branch is read from disk, why the threshold is absolute, the
-`/arbol` command, and the list of things that were tried and cannot be done.
+`/tree` command, and the list of things that were tried and cannot be done.
 
 ## License
 

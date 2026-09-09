@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 # Removes the statusline: drops the settings.json key and the installed pieces.
-# The theme and /arbol are only touched with their respective flags.
+# The theme and /tree are only touched with their respective flags.
 set -euo pipefail
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 SETTINGS="$CLAUDE_DIR/settings.json"
 
 ALSO_THEME=0
-ALSO_ARBOL=0
+ALSO_TREE=0
 DRY_RUN=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --also-theme) ALSO_THEME=1 ;;
-    --also-arbol) ALSO_ARBOL=1 ;;
+    --also-tree) ALSO_TREE=1 ;;
     --dry-run)    DRY_RUN=1 ;;
     -h|--help)
-      echo "Usage: ./uninstall.sh [--also-theme] [--also-arbol] [--dry-run]"; exit 0 ;;
+      echo "Usage: ./uninstall.sh [--also-theme] [--also-tree] [--dry-run]"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
   shift
@@ -68,9 +68,9 @@ PY
 say "· statusline.sh"
 run rm -f "$CLAUDE_DIR/statusline.sh"
 
-if [ "$ALSO_ARBOL" = 1 ]; then
-  say "· commands/arbol.md"
-  run rm -f "$CLAUDE_DIR/commands/arbol.md"
+if [ "$ALSO_TREE" = 1 ]; then
+  say "· commands/tree.md"
+  run rm -f "$CLAUDE_DIR/commands/tree.md"
 fi
 if [ "$ALSO_THEME" = 1 ]; then
   say "· themes/naranja.json"

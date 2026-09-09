@@ -13,7 +13,7 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 TARGET="$CLAUDE_DIR/statusline.sh"
 
 WITH_THEME=0
-WITH_ARBOL=1
+WITH_TREE=1
 DRY_RUN=0
 
 usage() {
@@ -22,7 +22,7 @@ Usage: ./install.sh [options]
 
   --with-theme   Also install the "naranja" theme and activate it (overwrites the
                  current theme). Without this flag the theme is left alone.
-  --no-arbol     Skip the /arbol command.
+  --no-tree      Skip the /tree command.
   --dry-run      Show what it would do, write nothing.
   -h, --help     This help.
 
@@ -33,7 +33,7 @@ USAGE
 while [ $# -gt 0 ]; do
   case "$1" in
     --with-theme) WITH_THEME=1 ;;
-    --no-arbol)   WITH_ARBOL=0 ;;
+    --no-tree)   WITH_TREE=0 ;;
     --dry-run)    DRY_RUN=1 ;;
     -h|--help)    usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -73,10 +73,10 @@ say "· statusline.sh"
 run cp "$SRC/statusline.sh" "$TARGET"
 run chmod +x "$TARGET"
 
-if [ "$WITH_ARBOL" = 1 ]; then
-  say "· commands/arbol.md"
+if [ "$WITH_TREE" = 1 ]; then
+  say "· commands/tree.md"
   run mkdir -p "$CLAUDE_DIR/commands"
-  run cp "$SRC/commands/arbol.md" "$CLAUDE_DIR/commands/arbol.md"
+  run cp "$SRC/commands/tree.md" "$CLAUDE_DIR/commands/tree.md"
 fi
 
 if [ "$WITH_THEME" = 1 ]; then

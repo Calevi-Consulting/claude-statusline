@@ -8,13 +8,10 @@ nothing needs to be installed.
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /arbol
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /tree
 dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
 dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
-
-> The command is named `/arbol` ("tree" in Spanish) because that is the filename the hint
-> points at. Rename the file and the `hint` strings together if you prefer `/tree`.
 
 ## The thresholds: absolute tokens, not a percentage
 
@@ -34,7 +31,7 @@ is **200k tokens**.
 | Condition | Colour | Hint | Tree branch |
 |---|---|---|---|
 | `tok < 0.8·SZ` (< 160k) | green | — | stay in the session |
-| `tok ≥ 0.8·SZ` (≥ 160k) | yellow | `smart zone limit · /arbol` | run it and decide |
+| `tok ≥ 0.8·SZ` (≥ 160k) | yellow | `smart zone limit · /tree` | run it and decide |
 | `tok ≥ SZ` (≥ 200k) | yellow | `dumb zone · /clear if disposable, else /handoff` | `/clear` or `/handoff` |
 | `tok ≥ 1.5·SZ` (≥ 300k) | red | same as above | `/clear` or `/handoff` |
 | `pct ≥ 80` | yellow | `window limit · /clear or /handoff` | `/clear` or `/handoff` |
@@ -224,7 +221,7 @@ if used is not None:
 
     # Decision tree (Matt Pocock): the statusline can only answer the first
     # question -- "do you have smart zone left?". The other three depend on
-    # the session, so past the threshold it defers to /arbol.
+    # the session, so past the threshold it defers to /tree.
     # Two distinct risks: running out of WINDOW (%) and leaving the SMART
     # ZONE (absolute tokens). The most urgent one wins.
     if pct >= crit:
@@ -234,7 +231,7 @@ if used is not None:
     elif pct >= warn:
         hint = "window limit · /clear or /handoff"
     elif tok >= SZ * 0.8:
-        hint = "smart zone limit · /arbol"
+        hint = "smart zone limit · /tree"
     else:
         hint = None
 
@@ -299,7 +296,7 @@ Expected output — the same four lines from the top of this document:
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /arbol
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /tree
 dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
 dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
@@ -322,7 +319,7 @@ Then restart Claude Code: the statusline is read when the session starts.
 
 ---
 
-## The `/arbol` command (optional, but it is the other half)
+## The `/tree` command (optional, but it is the other half)
 
 The statusline's hint can only answer the **first** question of Matt Pocock's decision
 tree — "do you have smart zone left?" — because it is the only one that is a number. The
@@ -332,7 +329,7 @@ that *can* see the conversation:
 
 ```bash
 mkdir -p ~/.claude/commands
-cat > ~/.claude/commands/arbol.md <<'EOF'
+cat > ~/.claude/commands/tree.md <<'EOF'
 ---
 description: Recommends what to do at the end of a work phase (Matt Pocock's decision tree) based on the real state of this session
 ---
@@ -499,7 +496,7 @@ The decisions that cost an iteration, so they are not relitigated:
   "all good" and "do something" the same colour.
 - **The statusline does not decide for you.** Of the tree's four questions, only the first
   is a number. The other three depend on what happened in the session, which is why the
-  hint defers to `/arbol` instead of recommending a branch it cannot justify.
+  hint defers to `/tree` instead of recommending a branch it cannot justify.
 - **Never break.** A statusline that dies on a badly edited JSON leaves you with no bar and
   no clue. Any config error falls back to the defaults and says so on the line.
 - **`SZ = 200k` is judgement, not measurement.** No number in this document comes from an
@@ -550,7 +547,7 @@ On the new workstation, open Claude Code in any directory and paste:
 
 > Install the statusline described in this document: <paste the contents of this .md, or
 > its path if you already copied it>. Create `~/.claude/statusline.sh`, the
-> `~/.claude/commands/arbol.md` command and the `~/.claude/themes/naranja.json` theme, and
+> `~/.claude/commands/tree.md` command and the `~/.claude/themes/naranja.json` theme, and
 > add the `statusLine` and `theme` keys to `~/.claude/settings.json` **by merging**,
 > without losing what is already there. Back up `settings.json` before writing. Then test
 > the script with fake payloads at 42/70/84/93% and show me the output. If you detect that
