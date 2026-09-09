@@ -5,16 +5,13 @@ and, when it matters, **what to do** about that context.
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone al limite · /arbol
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear si es descartable, si no /handoff
-dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · sin ventana · /compact o /clear YA
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /arbol
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
+dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
 
 The bar runs **green → yellow → red**. Green does not mean "little context used": it means
 "you are still in the zone where the model reasons well".
-
-> The hints are in Spanish, as shown above. They are string literals in `statusline.sh`
-> (the `hint = ...` lines) — translate them there if you prefer English.
 
 ## Install
 
@@ -109,7 +106,7 @@ top of the script.
 
 ## Design
 
-`docs/design.md` (in Spanish) carries the full reasoning: what the statusline payload does
+`docs/design.md` carries the full reasoning: what the statusline payload does
 and does not contain, why the branch is read from disk, why the threshold is absolute, the
 `/arbol` command, and the list of things that were tried and cannot be done.
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Instala la statusline de contexto de Claude Code.
+# Installs the Claude Code context statusline.
 #
-# La clave `statusLine` sólo se lee de settings.json — no es empaquetable como
-# plugin (verificado en 2.1.266: `claude plugin validate` responde
-# "Unknown field 'statusLine'"). Por eso este instalador existe: copia las
-# piezas y cablea la clave con la ruta absoluta de ESTA máquina.
+# The `statusLine` key is only read from settings.json — it cannot be packaged
+# as a plugin (verified on 2.1.266: `claude plugin validate` answers
+# "Unknown field 'statusLine'"). Hence this installer: it copies the pieces and
+# wires the key with the absolute path of THIS machine.
 set -euo pipefail
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -18,15 +18,15 @@ DRY_RUN=0
 
 usage() {
   cat <<'USAGE'
-Uso: ./install.sh [opciones]
+Usage: ./install.sh [options]
 
-  --with-theme   Instala también el tema "naranja" y lo activa (pisa el tema actual).
-                 Sin este flag el tema no se toca.
-  --no-arbol     No instala el comando /arbol.
-  --dry-run      Muestra qué haría, sin escribir nada.
-  -h, --help     Esta ayuda.
+  --with-theme   Also install the "naranja" theme and activate it (overwrites the
+                 current theme). Without this flag the theme is left alone.
+  --no-arbol     Skip the /arbol command.
+  --dry-run      Show what it would do, write nothing.
+  -h, --help     This help.
 
-Respeta CLAUDE_CONFIG_DIR si está definida; por defecto usa ~/.claude.
+Honours CLAUDE_CONFIG_DIR if set; defaults to ~/.claude.
 USAGE
 }
 
@@ -36,7 +36,7 @@ while [ $# -gt 0 ]; do
     --no-arbol)   WITH_ARBOL=0 ;;
     --dry-run)    DRY_RUN=1 ;;
     -h|--help)    usage; exit 0 ;;
-    *) echo "Opción desconocida: $1" >&2; usage >&2; exit 2 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
   shift
 done
@@ -44,17 +44,17 @@ done
 say() { printf '%s\n' "$*"; }
 run() { if [ "$DRY_RUN" = 1 ]; then say "  [dry-run] $*"; else "$@"; fi; }
 
-# --- Requisitos ---------------------------------------------------------------
+# --- Requirements ---------------------------------------------------------------
 command -v python3 >/dev/null 2>&1 || {
-  echo "ERROR: python3 no está disponible; la statusline lo necesita para leer el payload." >&2
+  echo "ERROR: python3 is not available; the statusline needs it to read the payload." >&2
   exit 1
 }
 
-say "Instalando en: $CLAUDE_DIR"
-[ "$DRY_RUN" = 1 ] && say "(dry-run: no se escribe nada)"
+say "Installing into: $CLAUDE_DIR"
+[ "$DRY_RUN" = 1 ] && say "(dry-run: nothing is written)"
 
-# settings.json se valida ANTES de copiar nada: un JSON roto aborta la instalación
-# entera en vez de dejar los archivos puestos y la clave sin cablear.
+# settings.json is validated BEFORE copying anything: a broken JSON aborts the whole
+# install instead of leaving files in place with the key unwired.
 if [ -s "$SETTINGS" ]; then
   SETTINGS="$SETTINGS" python3 -c '
 import json, os, sys, pathlib
@@ -62,12 +62,12 @@ p = pathlib.Path(os.environ["SETTINGS"])
 try:
     json.loads(p.read_text() or "{}")
 except json.JSONDecodeError as e:
-    sys.exit(f"ERROR: {p} no es JSON valido ({e}).\n"
-             "Arreglalo o movelo antes de instalar; no se toco nada.")
+    sys.exit(f"ERROR: {p} is not valid JSON ({e}).\n"
+             "Fix or move it before installing; nothing was touched.")
 ' || exit 1
 fi
 
-# --- Piezas -------------------------------------------------------------------
+# --- Pieces -------------------------------------------------------------------
 run mkdir -p "$CLAUDE_DIR"
 say "· statusline.sh"
 run cp "$SRC/statusline.sh" "$TARGET"
@@ -86,7 +86,7 @@ if [ "$WITH_THEME" = 1 ]; then
 fi
 
 # --- settings.json ------------------------------------------------------------
-# Se edita con python (no sed) para preservar todo lo demás intacto.
+# Edited with python (not sed) so everything else is preserved intact.
 say "· settings.json → statusLine"
 SETTINGS="$SETTINGS" TARGET="$TARGET" WITH_THEME="$WITH_THEME" DRY_RUN="$DRY_RUN" python3 <<'PY'
 import json, os, pathlib, shutil, sys, time
@@ -103,13 +103,13 @@ if settings.exists():
         try:
             data = json.loads(text)
         except json.JSONDecodeError as e:
-            sys.exit(f"ERROR: {settings} no es JSON válido ({e}). "
-                     "Arreglalo o movelo antes de instalar; no se tocó nada.")
+            sys.exit(f"ERROR: {settings} is not valid JSON ({e}). "
+                     "Fix or move it before installing; nothing was touched.")
 
 previous = data.get("statusLine")
 if previous and previous.get("command") != target:
-    print(f"  aviso: ya había una statusLine apuntando a {previous.get('command')!r}")
-    print("         se reemplaza; el backup queda al lado de settings.json")
+    print(f"  note: a statusLine was already set, pointing at {previous.get('command')!r}")
+    print("        it is being replaced; the backup sits next to settings.json")
 
 data["statusLine"] = {"type": "command", "command": target}
 if theme:
@@ -131,8 +131,8 @@ settings.write_text(json.dumps(data, indent=2) + "\n")
 PY
 
 say ""
-say "Listo. Abrí una sesión nueva de Claude Code para verla."
-say "Probala sin abrir Claude:"
+say "Done. Open a new Claude Code session to see it."
+say "Try it without opening Claude:"
 say "  echo '{\"workspace\":{\"current_dir\":\"'\"\$PWD\"'\"},\"model\":{\"display_name\":\"Opus\"},\"context_window\":{\"used_percentage\":15,\"context_window_size\":1000000,\"total_input_tokens\":150000}}' | $TARGET"
-[ "$WITH_THEME" = 0 ] && say "" && say "El tema no se instaló. Para el borde naranja del prompt: ./install.sh --with-theme"
+[ "$WITH_THEME" = 0 ] && say "" && say "The theme was not installed. For the orange prompt border: ./install.sh --with-theme"
 exit 0

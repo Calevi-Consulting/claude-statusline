@@ -1,6 +1,6 @@
 #!/bin/sh
-# Lee el payload del statusline una sola vez, lo reenvia al hook de Orca
-# (telemetria; ese script no imprime nada) e imprime el contador de contexto.
+# Reads the statusline payload once, forwards it to the Orca hook (telemetry;
+# that script prints nothing) and prints the context counter.
 payload=$(cat)
 [ -z "$payload" ] && exit 0
 
@@ -26,8 +26,8 @@ DEFAULTS = {"smartZoneTokens": 200_000, "windowWarnPct": 80, "windowCriticalPct"
 
 
 def load_cfg():
-    """Config opcional. Nunca rompe la statusline: si el archivo esta mal,
-    devuelve los defaults y marca el error para mostrarlo."""
+    """Optional config. Never breaks the statusline: on a bad file it returns
+    the defaults and flags the error so it can be shown."""
     try:
         if not os.path.isfile(CFG_PATH):
             return {}, False
@@ -47,7 +47,7 @@ def num(value, fallback):
 
 
 def smart_zone(cfg, model):
-    """Precedencia: env > perModel > smartZoneTokens > default."""
+    """Precedence: env > perModel > smartZoneTokens > default."""
     env = os.environ.get("CLAUDE_SMART_ZONE_TOKENS")
     if env:
         return num(env, DEFAULTS["smartZoneTokens"])
@@ -59,7 +59,7 @@ def smart_zone(cfg, model):
 
 
 def git_branch(start):
-    """Lee la branch de .git/HEAD sin invocar git (worktrees incluidos)."""
+    """Reads the branch from .git/HEAD without invoking git (worktrees included)."""
     try:
         d = os.path.abspath(start)
         while True:
@@ -113,9 +113,9 @@ size = cw.get("context_window_size") or 0
 tok = cw.get("total_input_tokens") or 0
 if used is not None:
     pct = int(round(used))
-    # Smart zone: umbral ABSOLUTO en tokens, no un % de la ventana. La
-    # degradacion de calidad no escala con el tamano de la ventana; 65% de
-    # 1M son 650k tokens, muy pasada cualquier smart zone razonable.
+    # Smart zone: an ABSOLUTE token threshold, not a % of the window. Quality
+    # degradation does not scale with window size; 65% of 1M is 650k tokens,
+    # far past any reasonable smart zone.
     SZ = smart_zone(cfg, model)
     warn = num(cfg.get("windowWarnPct"), DEFAULTS["windowWarnPct"])
     crit = num(cfg.get("windowCriticalPct"), DEFAULTS["windowCriticalPct"])
@@ -126,19 +126,19 @@ if used is not None:
         return f"{n/1_000_000:.1f}M" if n >= 1_000_000 else f"{n/1000:.0f}k"
     label = f"{h(tok)}/{h(size)}" if size else h(tok)
 
-    # Arbol de decision (Matt Pocock): la statusline solo puede juzgar la
-    # primera pregunta -- "¿te queda smart zone?". Las otras tres dependen
-    # de la sesion, asi que a partir del umbral remite a /arbol.
-    # Dos riesgos distintos: quedarse sin VENTANA (%) y salirse de la SMART
-    # ZONE (tokens absolutos). El mas urgente gana.
+    # Decision tree (Matt Pocock): the statusline can only answer the first
+    # question -- "do you have smart zone left?". The other three depend on
+    # the session, so past the threshold it defers to /arbol.
+    # Two distinct risks: running out of WINDOW (%) and leaving the SMART
+    # ZONE (absolute tokens). The most urgent one wins.
     if pct >= crit:
-        hint = "sin ventana · /compact o /clear YA"
+        hint = "out of window · /compact or /clear NOW"
     elif tok >= SZ:
-        hint = "dumb zone · /clear si es descartable, si no /handoff"
+        hint = "dumb zone · /clear if disposable, else /handoff"
     elif pct >= warn:
-        hint = "ventana al limite · /clear o /handoff"
+        hint = "window limit · /clear or /handoff"
     elif tok >= SZ * 0.8:
-        hint = "smart zone al limite · /arbol"
+        hint = "smart zone limit · /arbol"
     else:
         hint = None
 
@@ -148,7 +148,7 @@ if used is not None:
         parts.append(f"{color}{hint}{R}")
 
 if cfg_broken:
-    parts.append(f"{RED}statusline.json ilegible{R}")
+    parts.append(f"{RED}statusline.json unreadable{R}")
 
 print(" · ".join(parts))
 '

@@ -1,101 +1,109 @@
-# Statusline de Claude Code: contexto, branch y árbol de decisión
+# Claude Code statusline: context, branch and a decision tree
 
-Cómo replicar en una workstation limpia la statusline que muestra directorio, branch,
-modelo, uso de contexto y una sugerencia de qué hacer cuando el contexto se llena.
+How to reproduce, on a clean workstation, the statusline that shows directory, branch,
+model, context usage and a suggestion of what to do when the context fills up.
 
-Verificado contra Claude Code **2.1.266** (macOS). Todo son archivos en `~/.claude/`;
-no hay que instalar nada.
+Verified against Claude Code **2.1.266** (macOS). Everything is files under `~/.claude/`;
+nothing needs to be installed.
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone al limite · /arbol
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear si es descartable, si no /handoff
-dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · sin ventana · /compact o /clear YA
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /arbol
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
+dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
 
-## Los umbrales: tokens absolutos, no porcentaje
+> The command is named `/arbol` ("tree" in Spanish) because that is the filename the hint
+> points at. Rename the file and the `hint` strings together if you prefer `/tree`.
 
-El hint distingue **dos riesgos que no son el mismo**:
+## The thresholds: absolute tokens, not a percentage
 
-- **Salir de la smart zone** — la calidad de razonamiento se degrada mucho antes de
-  llenar la ventana, y ese punto **no escala con el tamaño de la ventana**. Es un
-  umbral en **tokens absolutos** (`SZ`, por defecto **200k**, configurable).
-- **Quedarse sin ventana** — eso sí es un porcentaje, y es lo que dispara el
+The hint distinguishes **two risks that are not the same thing**:
+
+- **Leaving the smart zone** — reasoning quality degrades well before the window fills,
+  and that point **does not scale with window size**. It is a threshold in **absolute
+  tokens** (`SZ`, **200k** by default, configurable).
+- **Running out of window** — that one *is* a percentage, and it is what triggers
   auto-compact.
 
-Mezclarlos es un error fácil: un umbral de "65% del contexto" son 130k tokens con una
-ventana de 200k (razonable por casualidad) pero **650k** con una de 1M, mucho después
-de que la calidad se haya ido. Por eso `SZ` es absoluto y el % solo cubre el final de
-la ventana. El default es **200k tokens**.
+Conflating them is an easy mistake: a "65% of context" threshold is 130k tokens on a 200k
+window (reasonable by accident) but **650k** on a 1M one, long after quality is gone. That
+is why `SZ` is absolute and the percentage only covers the end of the window. The default
+is **200k tokens**.
 
-| Condición | Color | Hint | Rama del árbol |
+| Condition | Colour | Hint | Tree branch |
 |---|---|---|---|
-| `tok < 0.8·SZ` (< 160k) | verde | — | seguí en la sesión |
-| `tok ≥ 0.8·SZ` (≥ 160k) | amarillo | `smart zone al limite · /arbol` | correlo y decidí |
-| `tok ≥ SZ` (≥ 200k) | amarillo | `dumb zone · /clear si es descartable, si no /handoff` | `/clear` o `/handoff` |
-| `tok ≥ 1.5·SZ` (≥ 300k) | rojo | igual que arriba | `/clear` o `/handoff` |
-| `pct ≥ 80` | amarillo | `ventana al limite · /clear o /handoff` | `/clear` o `/handoff` |
-| `pct ≥ 90` | rojo | `sin ventana · /compact o /clear YA` | `/compact` |
+| `tok < 0.8·SZ` (< 160k) | green | — | stay in the session |
+| `tok ≥ 0.8·SZ` (≥ 160k) | yellow | `smart zone limit · /arbol` | run it and decide |
+| `tok ≥ SZ` (≥ 200k) | yellow | `dumb zone · /clear if disposable, else /handoff` | `/clear` or `/handoff` |
+| `tok ≥ 1.5·SZ` (≥ 300k) | red | same as above | `/clear` or `/handoff` |
+| `pct ≥ 80` | yellow | `window limit · /clear or /handoff` | `/clear` or `/handoff` |
+| `pct ≥ 90` | red | `out of window · /compact or /clear NOW` | `/compact` |
 
-Gana la condición más urgente. El color sigue al hint, así que ambos cuentan la misma
-historia.
+The most urgent condition wins. Colour follows the hint, so both tell the same story.
 
-**Con una ventana de 200k, el default de `SZ` no se alcanza nunca**: a 160k tokens ya
-estás al 80% y dispara `ventana al limite`. En la práctica esos modelos quedan cubiertos
-solo por los umbrales de porcentaje. Si querés el aviso de smart zone también ahí,
-bajalo con `perModel` (ver más abajo).
+**On a 200k window the default `SZ` is never reached**: at 160k tokens you are already at
+80% and `window limit` fires. In practice those models are covered by the percentage
+thresholds alone. If you want the smart-zone warning there too, lower it with `perModel`
+(see below).
 
-`SZ` es **criterio, no medición**: 200k es un punto de partida, no un número que yo
-haya validado. Se cambia sin tocar el script — ver
-[Configurar la smart zone](#configurar-la-smart-zone).
-
----
-
-## Requisitos
-
-- Claude Code 2.1.x o posterior (`claude --version`).
-- `python3` en el PATH. En macOS viene con las Command Line Tools; en Linux es
-  el paquete `python3` de la distro.
-- Una terminal con soporte de color de 24 bits (iTerm2, Ghostty, Kitty, WezTerm,
-  Terminal.app reciente, Windows Terminal). Sin truecolor los colores caen a lo
-  más cercano, pero nada se rompe.
+`SZ` is **judgement, not measurement**: 200k is a starting point, not a number I validated.
+It changes without touching the script — see
+[Configuring the smart zone](#configuring-the-smart-zone).
 
 ---
 
-## Qué muestra, y de dónde sale cada dato
+## Requirements
 
-Claude Code invoca el comando de `statusLine` y le pasa por **stdin** un JSON con el
-estado de la sesión. Los campos que usa este script:
+- Claude Code 2.1.x or later (`claude --version`).
+- `python3` on PATH. On macOS it ships with the Command Line Tools; on Linux it is the
+  distro's `python3` package.
+- A terminal with 24-bit colour support (iTerm2, Ghostty, Kitty, WezTerm, recent
+  Terminal.app, Windows Terminal). Without truecolor the colours fall back to the nearest
+  match, but nothing breaks.
 
-| Campo del payload | Se muestra como |
+---
+
+## What it shows, and where each field comes from
+
+Claude Code invokes the `statusLine` command and passes it, over **stdin**, a JSON blob
+with the session state. The fields this script uses:
+
+| Payload field | Rendered as |
 |---|---|
-| `workspace.current_dir` | nombre del directorio |
-| `model.display_name` | modelo |
-| `context_window.used_percentage` | barra + porcentaje |
+| `workspace.current_dir` | directory name |
+| `model.display_name` | model |
+| `context_window.used_percentage` | bar + percentage |
 | `context_window.total_input_tokens` / `.context_window_size` | `700k/1.0M` |
 
-**La branch no viene en el payload.** `workspace` trae `current_dir`, `project_dir`,
-`added_dirs`, `git_worktree` (un path) y `repo` (`{host, owner, name}`) — ningún campo
-con el nombre de la rama. Por eso el script la lee de `.git/HEAD` directamente, sin
-invocar `git`: la statusline se refresca seguido y un fork por refresco se nota.
-Maneja worktrees (donde `.git` es un archivo con `gitdir:`) y HEAD detached (muestra
-`@<sha7>`).
+**The branch is not in the payload.** `workspace` carries `current_dir`, `project_dir`,
+`added_dirs`, `git_worktree` (a path) and `repo` (`{host, owner, name}`) — no field with
+the branch name. So the script reads it from `.git/HEAD` directly, without invoking `git`:
+the statusline refreshes often and one fork per refresh is noticeable. It handles worktrees
+(where `.git` is a file containing `gitdir:`) and detached HEAD (shows `@<sha7>`).
 
 ---
 
-## Instalación
+## Installation
 
-### 1. El script
+> If you cloned this repository, `./install.sh` does all of the following for you. The
+> steps below are the manual path, and the reference for what the installer touches.
+
+### 1. The script
 
 ```bash
 mkdir -p ~/.claude
 cat > ~/.claude/statusline.sh <<'SH'
 #!/bin/sh
-# Statusline de Claude Code: directorio · branch · modelo · uso de contexto · hint.
-# Recibe por stdin el JSON de estado de la sesion.
+# Reads the statusline payload once, forwards it to the Orca hook (telemetry;
+# that script prints nothing) and prints the context counter.
 payload=$(cat)
 [ -z "$payload" ] && exit 0
 
+orca=~/.orca/agent-hooks/claude-statusline.sh
+if [ -x "$orca" ]; then
+  printf '%s' "$payload" | /bin/sh "$orca" >/dev/null 2>&1 &
+fi
 
 printf '%s' "$payload" | python3 -c '
 import json, os, sys
@@ -114,8 +122,8 @@ DEFAULTS = {"smartZoneTokens": 200_000, "windowWarnPct": 80, "windowCriticalPct"
 
 
 def load_cfg():
-    """Config opcional. Nunca rompe la statusline: si el archivo esta mal,
-    devuelve los defaults y marca el error para mostrarlo."""
+    """Optional config. Never breaks the statusline: on a bad file it returns
+    the defaults and flags the error so it can be shown."""
     try:
         if not os.path.isfile(CFG_PATH):
             return {}, False
@@ -135,7 +143,7 @@ def num(value, fallback):
 
 
 def smart_zone(cfg, model):
-    """Precedencia: env > perModel > smartZoneTokens > default."""
+    """Precedence: env > perModel > smartZoneTokens > default."""
     env = os.environ.get("CLAUDE_SMART_ZONE_TOKENS")
     if env:
         return num(env, DEFAULTS["smartZoneTokens"])
@@ -147,7 +155,7 @@ def smart_zone(cfg, model):
 
 
 def git_branch(start):
-    """Lee la branch de .git/HEAD sin invocar git (worktrees incluidos)."""
+    """Reads the branch from .git/HEAD without invoking git (worktrees included)."""
     try:
         d = os.path.abspath(start)
         while True:
@@ -201,9 +209,9 @@ size = cw.get("context_window_size") or 0
 tok = cw.get("total_input_tokens") or 0
 if used is not None:
     pct = int(round(used))
-    # Smart zone: umbral ABSOLUTO en tokens, no un % de la ventana. La
-    # degradacion de calidad no escala con el tamano de la ventana; 65% de
-    # 1M son 650k tokens, muy pasada cualquier smart zone razonable.
+    # Smart zone: an ABSOLUTE token threshold, not a % of the window. Quality
+    # degradation does not scale with window size; 65% of 1M is 650k tokens,
+    # far past any reasonable smart zone.
     SZ = smart_zone(cfg, model)
     warn = num(cfg.get("windowWarnPct"), DEFAULTS["windowWarnPct"])
     crit = num(cfg.get("windowCriticalPct"), DEFAULTS["windowCriticalPct"])
@@ -214,19 +222,19 @@ if used is not None:
         return f"{n/1_000_000:.1f}M" if n >= 1_000_000 else f"{n/1000:.0f}k"
     label = f"{h(tok)}/{h(size)}" if size else h(tok)
 
-    # Arbol de decision (Matt Pocock): la statusline solo puede juzgar la
-    # primera pregunta -- "¿te queda smart zone?". Las otras tres dependen
-    # de la sesion, asi que a partir del umbral remite a /arbol.
-    # Dos riesgos distintos: quedarse sin VENTANA (%) y salirse de la SMART
-    # ZONE (tokens absolutos). El mas urgente gana.
+    # Decision tree (Matt Pocock): the statusline can only answer the first
+    # question -- "do you have smart zone left?". The other three depend on
+    # the session, so past the threshold it defers to /arbol.
+    # Two distinct risks: running out of WINDOW (%) and leaving the SMART
+    # ZONE (absolute tokens). The most urgent one wins.
     if pct >= crit:
-        hint = "sin ventana · /compact o /clear YA"
+        hint = "out of window · /compact or /clear NOW"
     elif tok >= SZ:
-        hint = "dumb zone · /clear si es descartable, si no /handoff"
+        hint = "dumb zone · /clear if disposable, else /handoff"
     elif pct >= warn:
-        hint = "ventana al limite · /clear o /handoff"
+        hint = "window limit · /clear or /handoff"
     elif tok >= SZ * 0.8:
-        hint = "smart zone al limite · /arbol"
+        hint = "smart zone limit · /arbol"
     else:
         hint = None
 
@@ -236,7 +244,7 @@ if used is not None:
         parts.append(f"{color}{hint}{R}")
 
 if cfg_broken:
-    parts.append(f"{RED}statusline.json ilegible{R}")
+    parts.append(f"{RED}statusline.json unreadable{R}")
 
 print(" · ".join(parts))
 '
@@ -244,23 +252,23 @@ SH
 chmod +x ~/.claude/statusline.sh
 ```
 
-### 2. Cablearlo en settings
+### 2. Wire it into settings
 
-En `~/.claude/settings.json`, **agregando** la clave (no reemplaces el archivo: puede
-tener permisos, hooks y plugins que querés conservar):
+In `~/.claude/settings.json`, **adding** the key (do not replace the file: it may hold
+permissions, hooks and plugins you want to keep):
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "/Users/TU_USUARIO/.claude/statusline.sh"
+    "command": "/Users/YOUR_USER/.claude/statusline.sh"
   }
 }
 ```
 
-Usá la ruta **absoluta**: `~` no se expande en ese campo de forma confiable.
+Use the **absolute** path: `~` is not reliably expanded in that field.
 
-Merge no destructivo desde la shell:
+Non-destructive merge from the shell:
 
 ```bash
 python3 - <<'PY'
@@ -276,9 +284,9 @@ print("ok:", d["statusLine"]["command"])
 PY
 ```
 
-### 3. Verificar sin abrir Claude
+### 3. Verify without opening Claude
 
-El script es una función pura de su stdin, así que se prueba con un payload falso:
+The script is a pure function of its stdin, so it can be tested with a fake payload:
 
 ```bash
 for tok in 60000 170000 220000 920000; do
@@ -287,21 +295,21 @@ for tok in 60000 170000 220000 920000; do
 done
 ```
 
-Salida esperada — las mismas cuatro líneas del principio de este documento:
+Expected output — the same four lines from the top of this document:
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone al limite · /arbol
-dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear si es descartable, si no /handoff
-dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · sin ventana · /compact o /clear YA
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /arbol
+dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
+dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
 
-Con el directorio y la branch de donde hayas corrido el bucle, y con color. Si no
-aparece la branch, corrélo parado dentro de un repo git.
+With the directory and branch of wherever you ran the loop, and in colour. If the branch
+does not appear, run it from inside a git repository.
 
-Para comprobar que `SZ` es lo que manda y no el porcentaje, repetí el bucle con una
-ventana chica: los mismos totales de tokens tienen que dar los mismos hints, aunque el
-porcentaje sea muy distinto.
+To confirm that `SZ` is what governs and not the percentage, repeat the loop with a small
+window: the same token totals must produce the same hints, even though the percentage is
+very different.
 
 ```bash
 for tok in 60000 105000 130000 185000; do
@@ -310,52 +318,52 @@ for tok in 60000 105000 130000 185000; do
 done
 ```
 
-Después reiniciá Claude Code: la statusline se lee al arrancar la sesión.
+Then restart Claude Code: the statusline is read when the session starts.
 
 ---
 
-## El comando `/arbol` (opcional, pero es la otra mitad)
+## The `/arbol` command (optional, but it is the other half)
 
-El hint de la statusline solo puede contestar la **primera** pregunta del árbol de
-decisión de Matt Pocock — "¿te queda smart zone?" — porque es la única que es un
-número. Las otras tres (¿el contexto es descartable? ¿hay handoff? ¿es AFK?) dependen
-de qué pasó en la sesión, y ningún script las sabe. Por eso el hint remite a un
-comando que sí ve la conversación:
+The statusline's hint can only answer the **first** question of Matt Pocock's decision
+tree — "do you have smart zone left?" — because it is the only one that is a number. The
+other three (is the context disposable? is a handoff needed? can it run AFK?) depend on
+what happened in the session, and no script knows that. So the hint defers to a command
+that *can* see the conversation:
 
 ```bash
 mkdir -p ~/.claude/commands
 cat > ~/.claude/commands/arbol.md <<'EOF'
 ---
-description: Recomienda qué hacer al terminar una fase (árbol de Matt Pocock) según el estado real de esta sesión
+description: Recommends what to do at the end of a work phase (Matt Pocock's decision tree) based on the real state of this session
 ---
 
-Terminé una fase de trabajo. Recorré el árbol de decisión de Matt Pocock **en orden**
-y decidí por mí: la primera respuesta afirmativa gana, y `/compact` es lo que queda
-cuando ninguna aplica.
+I just finished a phase of work. Walk Matt Pocock's decision tree **in order** and decide
+for me: the first affirmative answer wins, and `/compact` is what is left when none apply.
 
-Contestá cada pregunta mirando **esta conversación**, no en abstracto. Para cada una,
-una línea: la respuesta y la evidencia concreta que la sostiene.
+Answer each question by looking at **this conversation**, not in the abstract. For each
+one, give a single line: the answer and the concrete evidence behind it.
 
-1. **¿Puedo continuar?** ¿Queda smart zone (mirá el % de contexto en la statusline),
-   o lo que falta es lo bastante simple para hacerlo en la dumb zone?
-   → si sí: **seguí en la sesión**.
-2. **¿El contexto es irrelevante?** ¿Las exploraciones y decisiones de esta sesión son
-   descartables, o hay hallazgos que se perderían?
-   → si sí: **`/clear`**.
-3. **¿Necesito un handoff?** ¿Esto sigue en otro agente, otro directorio u otro colega?
-   → si sí: **`/handoff`**.
-4. **¿La tarea se puede hacer AFK?** ¿Necesita input humano mientras corre?
-   → si no lo necesita: **subagente**.
-5. Si ninguna aplicó: **`/compact`**.
+1. **Can I continue?** Is there smart zone left (check the context % in the statusline),
+   or is what remains simple enough to do in the dumb zone?
+   → if yes: **stay in the session**.
+2. **Is the context irrelevant?** Are this session's explorations and decisions
+   disposable, or are there findings that would be lost?
+   → if yes: **`/clear`**.
+3. **Do I need a handoff?** Does this continue in another agent, another directory or
+   with another person?
+   → if yes: **`/handoff`**.
+4. **Can the task be done AFK?** Does it need human input while it runs?
+   → if it does not: **subagent**.
+5. If none applied: **`/compact`**.
 
-Terminá con:
+Finish with:
 
-- **Recomendación**: el comando exacto a ejecutar.
-- **Por qué esa rama y no la anterior**: una frase.
-- **Qué se perdería**: si la rama descarta contexto (`/clear`, `/compact`), nombrá lo
-  concreto de esta sesión que no sobrevive, para que yo pueda decidir guardarlo antes.
+- **Recommendation**: the exact command to run.
+- **Why that branch and not the previous one**: one sentence.
+- **What would be lost**: if the branch discards context (`/clear`, `/compact`), name the
+  concrete things from this session that do not survive, so I can decide to save them first.
 
-No ejecutes nada. Solo recomendá.
+Do not execute anything. Only recommend.
 
 $ARGUMENTS
 EOF
@@ -363,14 +371,14 @@ EOF
 
 ---
 
-## El borde naranja del prompt (opcional)
+## The orange prompt border (optional)
 
-Va aparte de la statusline, pero es parte del mismo setup.
+Separate from the statusline, but part of the same setup.
 
-`/color orange` está declarado en el binario como *"Set the prompt bar color for **this
-session**"* — no persiste, por diseño. Para que sea permanente hay que overridear la
-clave `promptBorder` del tema, que es a lo que cae el resolvedor de color del borde
-cuando no hay un `/color` activo:
+`/color orange` is declared in the binary as *"Set the prompt bar color for **this
+session**"* — it does not persist, by design. To make it permanent you override the
+theme's `promptBorder` key, which is where the border colour resolver falls back to when
+no `/color` is active:
 
 ```bash
 mkdir -p ~/.claude/themes
@@ -386,51 +394,51 @@ cat > ~/.claude/themes/naranja.json <<'EOF'
 EOF
 ```
 
-Y en `settings.json`: `"theme": "custom:naranja"` (el slug es el nombre del archivo sin
-`.json`, prefijado con `custom:`).
+And in `settings.json`: `"theme": "custom:naranja"` (the slug is the filename without
+`.json`, prefixed with `custom:`).
 
-- `base` acepta: `dark`, `light`, `light-daltonized`, `dark-daltonized`, `light-ansi`,
+- `base` accepts: `dark`, `light`, `light-daltonized`, `dark-daltonized`, `light-ansi`,
   `dark-ansi`.
-- Los colores aceptan `rgb(r,g,b)`, `#rrggbb`, `#rgb`, `ansi256(n)` y `ansi:<nombre>`.
-- Claude Code vigila `~/.claude/themes/` y recarga al guardar — no hace falta reiniciar
-  para iterar el color.
-- Otras claves útiles del mismo objeto: `claude`, `claudeShimmer`, `planMode`,
+- Colours accept `rgb(r,g,b)`, `#rrggbb`, `#rgb`, `ansi256(n)` and `ansi:<name>`.
+- Claude Code watches `~/.claude/themes/` and reloads on save — no restart needed to
+  iterate on the colour.
+- Other useful keys in the same object: `claude`, `claudeShimmer`, `planMode`,
   `autoAccept`, `bashBorder`, `suggestion`, `success`, `error`, `warning`, `diffAdded`,
   `diffRemoved`.
-- `rgb(255,178,102)` es exactamente el naranja que da `/color orange` sobre base `dark`.
-  `rgb(255,140,0)` es la variante saturada.
+- `rgb(255,178,102)` is exactly the orange `/color orange` gives on a `dark` base.
+  `rgb(255,140,0)` is the saturated variant.
 
 ---
 
-## Configurar la smart zone
+## Configuring the smart zone
 
-Tres formas, de mayor a menor precedencia:
+Three ways, in decreasing order of precedence:
 
-**1. `CLAUDE_SMART_ZONE_TOKENS`** — la variable de entorno. Gana sobre todo lo demás,
-así que sirve tanto para probar un valor como para fijarlo de forma permanente.
+**1. `CLAUDE_SMART_ZONE_TOKENS`** — the environment variable. It beats everything else, so
+it works both for trying a value out and for setting it permanently.
 
-Para una sesión suelta, sin tocar nada:
+For a one-off session, touching nothing:
 
 ```bash
 CLAUDE_SMART_ZONE_TOKENS=150000 claude
 ```
 
-Para dejarlo fijo, en tu `~/.zshrc` (o `~/.bashrc`):
+To make it stick, in your `~/.zshrc` (or `~/.bashrc`):
 
 ```bash
 export CLAUDE_SMART_ZONE_TOKENS=150000
 ```
 
-El valor está en **tokens**, no en miles ni en porcentaje: `150000`, no `150` ni `15`.
-Un valor no numérico o ≤ 0 se ignora y cae al nivel siguiente, sin avisar.
+The value is in **tokens**, not thousands and not a percentage: `150000`, not `150` or
+`15`. A non-numeric or ≤ 0 value is ignored and falls through to the next level, silently.
 
-Ojo con la env var como mecanismo permanente: solo llega a Claude si el proceso hereda
-tu shell rc. Si lanzás Claude desde la app, un launcher o el IDE, puede no estar — por
-eso existe la opción 2.
+A caveat about the env var as a permanent mechanism: it only reaches Claude if the process
+inherits your shell rc. If you launch Claude from the app, a launcher or the IDE, it may
+not be there — which is why option 2 exists.
 
-**2. `~/.claude/statusline.json`** — persistente, y a diferencia de la env var no
-depende de que tu shell rc se haya cargado (importante si lanzás Claude desde la app o
-el IDE):
+**2. `~/.claude/statusline.json`** — persistent, and unlike the env var it does not depend
+on your shell rc having been loaded (important if you launch Claude from the app or the
+IDE):
 
 ```json
 {
@@ -441,71 +449,71 @@ el IDE):
 }
 ```
 
-Todas las claves son opcionales. `perModel` se indexa por el `display_name` del modelo
-—  el mismo string que ves en la statusline — y pisa a `smartZoneTokens` solo para ese
-modelo. Ojo: que un modelo tenga una ventana más grande no implica que su smart zone lo
-sea; son cosas distintas y este archivo es donde ponés tu criterio sobre cada una. El
-`perModel` del ejemplo existe justamente por eso: con ventana de 200k, un `SZ` de 200k
-queda fuera de alcance, así que ahí conviene un número más bajo.
+All keys are optional. `perModel` is indexed by the model's `display_name` — the same
+string you see in the statusline — and overrides `smartZoneTokens` for that model only.
+Note: a model having a larger window does not imply its smart zone is larger; they are
+different things, and this file is where you put your judgement about each. The example's
+`perModel` exists precisely for that: with a 200k window, an `SZ` of 200k is out of reach,
+so a lower number is the useful one there.
 
-**3. Los defaults del script**: `smartZoneTokens` 200k, `windowWarnPct` 80,
+**3. The script's defaults**: `smartZoneTokens` 200k, `windowWarnPct` 80,
 `windowCriticalPct` 90.
 
-Un valor inválido (negativo, no numérico) cae silenciosamente al nivel siguiente. Si el
-archivo existe pero no es JSON válido, la statusline **no se rompe**: usa los defaults y
-agrega `statusline.json ilegible` al final de la línea, para que no lo debuguees a
-ciegas.
+An invalid value (negative, non-numeric) falls silently through to the next level. If the
+file exists but is not valid JSON, the statusline **does not break**: it uses the defaults
+and appends `statusline.json unreadable` to the end of the line, so you are not debugging
+blind.
 
-Los escalones derivados (`0.8·SZ` para el primer aviso, `1.5·SZ` para el rojo) están
-fijos en el script; son dos multiplicadores en el bloque del hint.
+The derived steps (`0.8·SZ` for the first warning, `1.5·SZ` for red) are fixed in the
+script; they are two multipliers in the hint block.
 
-## Personalización
+## Customisation
 
-- **Smart zone y umbrales de ventana**: ver la sección anterior — no hace falta editar
-  el script.
-- **Colores**: las constantes truecolor del tope del bloque Python — `GRN` (sano), `YEL`
-  (aviso), `RED` (crítico) para la barra, y `O` para el nombre del directorio. Cambiar
-  `GRN` cambia solo la barra; `O` arrastra también el directorio.
-- **Longitud de la branch**: el `34` / `31` del truncado.
-- **Separador**: el `" · "` del `print` final.
-- **Glifo de branch**: no uso  (Powerline) para no depender de una Nerd Font. Si tu
-  terminal la tiene, agregalo antes de `{br}`.
-
----
-
-## Por qué está hecho así
-
-Las decisiones que costaron una iteración, para no volver a discutirlas:
-
-- **El umbral de smart zone es absoluto, no un porcentaje.** La primera versión usaba
-  "65% del contexto". Con ventana de 200k eso da 130k tokens (plausible por casualidad);
-  con 1M da 650k, o sea el aviso llega medio millón de tokens tarde. La degradación de
-  calidad no escala con el tamaño de la ventana, así que el umbral tampoco puede.
-- **Pero el porcentaje no se fue del todo.** Quedarse sin ventana es un riesgo distinto
-  de salirse de la smart zone, y ese sí es porcentual — es lo que dispara el
-  auto-compact. Por eso conviven los dos y gana el más urgente.
-- **El color sigue al hint.** En una versión intermedia el color cambiaba en 60/85 y el
-  hint en 65/80/90, así que la barra se ponía amarilla sin que hubiera nada que hacer.
-  Ahora ambos cuentan la misma historia.
-- **Semáforo verde → amarillo → rojo.** El estado sano usa verde, no el naranja del tema:
-  el naranja queda para el nombre del directorio y el borde del prompt, así que reutilizarlo
-  en la barra hacía que "todo bien" y "decorá" fueran el mismo color.
-- **La statusline no decide por vos.** De las cuatro preguntas del árbol, solo la
-  primera es un número. Las otras tres dependen de qué pasó en la sesión, y por eso el
-  hint remite a `/arbol` en vez de recomendar una rama que no puede justificar.
-- **Nunca romperse.** Una statusline que muere por un JSON mal editado te deja sin barra
-  y sin pista. Cualquier error de config cae a los defaults y lo dice en la línea.
-- **`SZ = 200k` es criterio, no medición.** Ningún número de este documento sale de un
-  experimento; son puntos de partida para que los muevas.
+- **Smart zone and window thresholds**: see the section above — no need to edit the script.
+- **Colours**: the truecolor constants at the top of the Python block — `GRN` (healthy),
+  `YEL` (warning), `RED` (critical) for the bar, and `O` for the directory name. Changing
+  `GRN` changes only the bar; `O` also drags the directory along.
+- **Branch length**: the `34` / `31` in the truncation.
+- **Separator**: the `" · "` in the final `print`.
+- **Branch glyph**: I do not use  (Powerline) so as not to depend on a Nerd Font. If your
+  terminal has one, add it before `{br}`.
 
 ---
 
-## Si además usás Orca
+## Why it is built this way
 
-Orca instala su propio `statusLine` global apuntando a
-`~/.orca/agent-hooks/claude-statusline.sh`. Ese script **no imprime nada**: solo hace
-POST del payload a la app de Orca para telemetría. Si lo pisás con este script, perdés
-esa integración. Para conservarla, insertá esto justo después del `[ -z "$payload" ]`:
+The decisions that cost an iteration, so they are not relitigated:
+
+- **The smart-zone threshold is absolute, not a percentage.** The first version used "65%
+  of context". On a 200k window that is 130k tokens (plausible by accident); on 1M it is
+  650k, i.e. the warning arrives half a million tokens late. Quality degradation does not
+  scale with window size, so the threshold cannot either.
+- **But the percentage did not go away.** Running out of window is a different risk from
+  leaving the smart zone, and that one *is* proportional — it is what triggers
+  auto-compact. So both coexist and the most urgent wins.
+- **Colour follows the hint.** In an intermediate version the colour changed at 60/85 and
+  the hint at 65/80/90, so the bar went yellow while there was nothing to do about it. Now
+  both tell the same story.
+- **Green → yellow → red.** The healthy state uses green, not the theme's orange: orange
+  is reserved for the directory name and the prompt border, so reusing it in the bar made
+  "all good" and "do something" the same colour.
+- **The statusline does not decide for you.** Of the tree's four questions, only the first
+  is a number. The other three depend on what happened in the session, which is why the
+  hint defers to `/arbol` instead of recommending a branch it cannot justify.
+- **Never break.** A statusline that dies on a badly edited JSON leaves you with no bar and
+  no clue. Any config error falls back to the defaults and says so on the line.
+- **`SZ = 200k` is judgement, not measurement.** No number in this document comes from an
+  experiment; they are starting points for you to move.
+
+---
+
+## If you also use Orca
+
+Orca installs its own global `statusLine` pointing at
+`~/.orca/agent-hooks/claude-statusline.sh`. That script **prints nothing**: it only POSTs
+the payload to the Orca app for telemetry. Overwriting it with this script would lose that
+integration, so the block that preserves it **is already in `statusline.sh`**, right after
+the `[ -z "$payload" ]` line:
 
 ```sh
 orca=~/.orca/agent-hooks/claude-statusline.sh
@@ -514,47 +522,48 @@ if [ -x "$orca" ]; then
 fi
 ```
 
-En background, porque ese script hace un `curl` con hasta 1.5s de timeout y no querés
-esa latencia en cada refresco.
+It runs in the background, because that script makes a `curl` with up to a 1.5s timeout and
+you do not want that latency on every refresh. If you do not use Orca the block is a no-op
+(the `-x` guard fails); delete those four lines if you would rather not carry it.
 
-Ojo: si Orca reinstala su hook puede volver a pisar la clave `statusLine` de
-`settings.json`. Si un día la barra aparece vacía, ese es el primer sospechoso.
-
----
-
-## Lo que no se puede (verificado, para no perder tiempo)
-
-- **Empaquetar la statusline como plugin.** `claude plugin validate` sobre un manifiesto
-  que declara `statusLine` responde: `Unknown field 'statusLine'. Claude Code ignores it
-  at load time.` Lo mismo bajo `experimental.statusLine`. La clave solo se lee de
-  `settings.json`. Un plugin sí puede *traer* el script, pero alguien tiene que cablear
-  la clave.
-- **El tema sí es empaquetable**, bajo `experimental.themes: "./themes"`. Declararlo en
-  el nivel superior todavía carga pero está deprecado.
-- **`/color` no persiste.** No hay dónde guardarlo; es por sesión por diseño.
-- **La branch no está en el payload.** Hay que leerla del disco.
+Careful: if Orca reinstalls its hook it may overwrite the `statusLine` key in
+`settings.json` again. If the bar goes blank one day, that is the first suspect.
 
 ---
 
-## Prompt para que Claude Code lo instale solo
+## What cannot be done (verified, so you do not lose time)
 
-En la workstation nueva, abrí Claude Code en cualquier directorio y pegá:
+- **Packaging the statusline as a plugin.** `claude plugin validate` on a manifest
+  declaring `statusLine` answers: `Unknown field 'statusLine'. Claude Code ignores it at
+  load time.` Same under `experimental.statusLine`. The key is only read from
+  `settings.json`. A plugin *can* ship the script, but somebody has to wire the key.
+- **The theme *is* packageable**, under `experimental.themes: "./themes"`. Declaring it at
+  the top level still loads but is deprecated.
+- **`/color` does not persist.** There is nowhere to store it; it is per-session by design.
+- **The branch is not in the payload.** It has to be read from disk.
 
-> Instalá la statusline descrita en este documento: <pegá el contenido de este .md, o
-> la ruta si ya lo copiaste>. Creá `~/.claude/statusline.sh`, el comando
-> `~/.claude/commands/arbol.md` y el tema `~/.claude/themes/naranja.json`, y agregá las
-> claves `statusLine` y `theme` a `~/.claude/settings.json` **haciendo merge**, sin
-> perder lo que ya tenga. Antes de escribir, hacé backup de `settings.json`. Después
-> probá el script con payloads falsos de 42/70/84/93% y mostrame la salida. Si detectás
-> que Orca ya tiene un `statusLine` instalado, incluí el bloque que le reenvía el
-> payload.
+---
 
-Si preferís que lo arme desde cero en vez de copiar el script, este prompt alcanza:
+## A prompt to have Claude Code install it for you
 
-> Quiero una statusline para Claude Code que muestre: directorio, branch de git,
-> modelo, y una barra con el % de contexto usado y los tokens (`700k/1.0M`), más un
-> hint que a partir del 65% me sugiera qué rama del árbol de decisión de Matt Pocock
-> considerar (`/clear`, `/handoff`, `/compact`). Antes de escribir nada, averiguá qué
-> campos trae realmente el JSON que Claude Code le pasa al comando de `statusLine` —
-> no asumas que trae la branch. Instalalo en `~/.claude/` y verificalo con payloads
-> falsos sin depender de reiniciar Claude.
+On the new workstation, open Claude Code in any directory and paste:
+
+> Install the statusline described in this document: <paste the contents of this .md, or
+> its path if you already copied it>. Create `~/.claude/statusline.sh`, the
+> `~/.claude/commands/arbol.md` command and the `~/.claude/themes/naranja.json` theme, and
+> add the `statusLine` and `theme` keys to `~/.claude/settings.json` **by merging**,
+> without losing what is already there. Back up `settings.json` before writing. Then test
+> the script with fake payloads at 42/70/84/93% and show me the output. If you detect that
+> Orca already has a `statusLine` installed, include the block that forwards the payload
+> to it.
+
+If you would rather it build the thing from scratch than copy the script, this prompt is
+enough:
+
+> I want a statusline for Claude Code showing: directory, git branch, model, and a bar
+> with the % of context used plus the tokens (`700k/1.0M`), and a hint that from 65% on
+> suggests which branch of Matt Pocock's decision tree to consider (`/clear`, `/handoff`,
+> `/compact`). Before writing anything, find out which fields the JSON Claude Code passes
+> to the `statusLine` command actually contains — do not assume it carries the branch.
+> Install it under `~/.claude/` and verify it with fake payloads without relying on
+> restarting Claude.
