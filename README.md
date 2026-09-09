@@ -3,12 +3,29 @@
 A statusline for Claude Code showing **directory · branch · model · context usage** —
 and, when it matters, **what to do** about that context.
 
+![claude-statusline running in a session](docs/img/statusline-live.png)
+
+The four states it reports, in order of urgency:
+
+![healthy](docs/img/state-healthy.svg)
+
+![smart zone limit](docs/img/state-smart-zone.svg)
+
+![dumb zone](docs/img/state-dumb-zone.svg)
+
+![out of window](docs/img/state-out-of-window.svg)
+
+<details>
+<summary>Plain-text version, for reading this file outside a browser</summary>
+
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
 dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 17% 170k/1.0M · smart zone limit · /tree
 dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░░ 22% 220k/1.0M · dumb zone · /clear if disposable, else /handoff
 dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · out of window · /compact or /clear NOW
 ```
+
+</details>
 
 The bar runs **green → yellow → red**. Green does not mean "little context used": it means
 "you are still in the zone where the model reasons well".
@@ -88,6 +105,10 @@ so on the line.
 
 Colours: the constants at the top of the Python block — `GRN` (healthy), `YEL` (warning),
 `RED` (critical) for the bar, and `O` for the directory name.
+
+The images above are **generated, not screenshotted**: `make images` runs the script and
+parses its ANSI output. Change a colour or a threshold and they regenerate correct,
+instead of quietly going stale.
 
 ## Requirements
 
