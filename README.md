@@ -16,7 +16,7 @@ The bar runs **green → yellow → red**. Green does not mean "little context u
 ## Install
 
 ```bash
-git clone https://github.com/mhereu/claude-statusline.git
+git clone https://github.com/Calevi-Consulting/claude-statusline.git
 cd claude-statusline
 ./install.sh
 ```
