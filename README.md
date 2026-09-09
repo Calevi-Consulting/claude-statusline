@@ -1,7 +1,7 @@
 # claude-statusline
 
-Statusline para Claude Code que muestra **directorio · branch · modelo · uso de contexto**
-y, cuando hace falta, **qué hacer** con ese contexto.
+A statusline for Claude Code showing **directory · branch · model · context usage** —
+and, when it matters, **what to do** about that context.
 
 ```
 dummy-project · feature/search-filters · Opus 5 · █░░░░░░░░░ 6% 60k/1.0M
@@ -10,70 +10,71 @@ dummy-project · feature/search-filters · Opus 5 · ██░░░░░░░
 dummy-project · feature/search-filters · Opus 5 · █████████░ 92% 920k/1.0M · sin ventana · /compact o /clear YA
 ```
 
-La barra va **verde → amarillo → rojo**. Verde no es "poco contexto": es "todavía estás
-en la zona donde el modelo razona bien".
+The bar runs **green → yellow → red**. Green does not mean "little context used": it means
+"you are still in the zone where the model reasons well".
 
-## Instalación
+> The hints are in Spanish, as shown above. They are string literals in `statusline.sh`
+> (the `hint = ...` lines) — translate them there if you prefer English.
+
+## Install
 
 ```bash
-git clone <url-de-este-repo> claude-statusline
+git clone https://github.com/mhereu/claude-statusline.git
 cd claude-statusline
 ./install.sh
 ```
 
-Opciones: `--with-theme` (instala y activa el tema naranja del borde del prompt),
-`--no-arbol` (no instala el comando `/arbol`), `--dry-run` (muestra qué haría).
-Respeta `CLAUDE_CONFIG_DIR`; por defecto usa `~/.claude`.
+Flags: `--with-theme` (also installs and activates the orange prompt-border theme),
+`--no-arbol` (skip the `/arbol` command), `--dry-run` (show what it would do, write nothing).
+Honours `CLAUDE_CONFIG_DIR`; defaults to `~/.claude`.
 
-Para revertir: `./uninstall.sh` (`--also-theme`, `--also-arbol` si querés llevarte eso también).
+To revert: `./uninstall.sh` (add `--also-theme`, `--also-arbol` to remove those too).
 
-El instalador **hace backup de `settings.json`** antes de tocarlo y preserva el resto de
-las claves. Si ya tenías una statusline, lo avisa antes de reemplazarla.
+The installer **backs up `settings.json`** before touching it and preserves every other key.
+If you already had a statusline configured, it says so before replacing it.
 
-## Por qué hay un instalador y no un plugin
+## Why an installer and not a plugin
 
-Porque la statusline **no es empaquetable como plugin**. Verificado en Claude Code
-`2.1.266`:
+Because a statusline **cannot be packaged as a plugin**. Verified on Claude Code `2.1.266`:
 
 ```
 $ claude plugin validate ./probe
   ❯ statusLine: Unknown field 'statusLine'. Claude Code ignores it at load time.
 ```
 
-Lo mismo bajo `experimental.statusLine`. La clave sólo se lee de `settings.json`, y su
-`command` tiene que ser una **ruta absoluta de la máquina donde corre** — que es
-exactamente lo que un plugin distribuido no puede saber. Un plugin sí podría *traer* el
-script, pero alguien tendría que cablear la clave igual. De ahí `install.sh`.
+Same under `experimental.statusLine`. The key is only read from `settings.json`, and its
+`command` must be an **absolute path on the machine where it runs** — precisely what a
+distributed plugin cannot know. A plugin could ship the script, but somebody would still
+have to wire the key. Hence `install.sh`.
 
-(El **tema** sí es empaquetable, bajo `experimental.themes`. Sólo la statusline no.)
+(The **theme** *is* packageable, under `experimental.themes`. Only the statusline is not.)
 
-## Los umbrales: tokens absolutos, no porcentaje
+## The thresholds: absolute tokens, not a percentage
 
-El hint distingue **dos riesgos que no son el mismo**:
+The hint distinguishes **two risks that are not the same thing**:
 
-- **Salir de la smart zone** — la calidad de razonamiento se degrada mucho antes de llenar
-  la ventana, y ese punto **no escala con el tamaño de la ventana**. Umbral en **tokens
-  absolutos** (`SZ`, por defecto 200k).
-- **Quedarse sin ventana** — eso sí es un porcentaje, y es lo que dispara el auto-compact.
+- **Leaving the smart zone** — reasoning quality degrades well before the window fills, and
+  that point **does not scale with window size**. So the threshold is in **absolute tokens**
+  (`SZ`, 200k by default).
+- **Running out of window** — that one *is* a percentage, and it is what triggers auto-compact.
 
-Mezclarlos es el error fácil: "65% del contexto" son 130k tokens con una ventana de 200k
-(razonable por casualidad) pero **650k** con una de 1M, mucho después de que la calidad se
-haya ido.
+Conflating them is the easy mistake: "65% of context" is 130k tokens on a 200k window
+(reasonable by accident) but **650k** on a 1M window — long after quality is gone.
 
-| Condición | Color | Hint |
+| Condition | Colour | Hint |
 |---|---|---|
-| `tok < 0.8·SZ` | verde | — |
-| `tok ≥ 0.8·SZ` | amarillo | `smart zone al limite · /arbol` |
-| `tok ≥ SZ` | amarillo | `dumb zone · /clear si es descartable, si no /handoff` |
-| `tok ≥ 1.5·SZ` | rojo | igual que arriba |
-| `pct ≥ 80` | amarillo | `ventana al limite · /clear o /handoff` |
-| `pct ≥ 90` | rojo | `sin ventana · /compact o /clear YA` |
+| `tok < 0.8·SZ` | green | — |
+| `tok ≥ 0.8·SZ` | yellow | smart zone limit · `/arbol` |
+| `tok ≥ SZ` | yellow | dumb zone · `/clear` if disposable, else `/handoff` |
+| `tok ≥ 1.5·SZ` | red | same as above |
+| `pct ≥ 80` | yellow | window limit · `/clear` or `/handoff` |
+| `pct ≥ 90` | red | out of window · `/compact` or `/clear` NOW |
 
-Gana la condición más urgente. El color sigue al hint, así que ambos cuentan la misma historia.
+The most urgent condition wins. Colour follows the hint, so both tell the same story.
 
-## Configuración
+## Configuration
 
-Todo opcional, en `~/.claude/statusline.json`:
+All optional, in `~/.claude/statusline.json`:
 
 ```json
 {
@@ -84,29 +85,34 @@ Todo opcional, en `~/.claude/statusline.json`:
 }
 ```
 
-Precedencia: `CLAUDE_SMART_ZONE_TOKENS` (env) > `perModel` > `smartZoneTokens` > default.
-Un archivo mal formado **no rompe la statusline**: cae a los defaults y lo dice en la línea.
+Precedence: `CLAUDE_SMART_ZONE_TOKENS` (env) > `perModel` > `smartZoneTokens` > default.
+A malformed file **does not break the statusline**: it falls back to the defaults and says
+so on the line.
 
-Colores: las constantes al tope del bloque Python — `GRN` (sano), `YEL` (aviso), `RED`
-(crítico) para la barra, `O` para el nombre del directorio.
+Colours: the constants at the top of the Python block — `GRN` (healthy), `YEL` (warning),
+`RED` (critical) for the bar, and `O` for the directory name.
 
-## Requisitos
+## Requirements
 
-- Claude Code (verificado en `2.1.266`)
-- `python3` en el PATH — el instalador falla temprano si no está
-- Una terminal con color de 24 bits (iTerm2, Ghostty, Kitty, WezTerm, Terminal.app
-  reciente, Windows Terminal)
+- Claude Code (verified on `2.1.266`)
+- `python3` on PATH — the installer fails early if it is missing
+- A terminal with 24-bit colour (iTerm2, Ghostty, Kitty, WezTerm, recent Terminal.app,
+  Windows Terminal)
 
-## Nota sobre Orca
+## Note on Orca
 
-`statusline.sh` reenvía el payload a `~/.orca/agent-hooks/claude-statusline.sh` si ese
-archivo existe y es ejecutable. Es telemetría de Orca, que instala su propia statusline
-**que no imprime nada** y puede pisar la clave en `settings.json`. Si no usás Orca el
-bloque no hace nada (el guard `-x` falla). Si querés sacarlo, son 4 líneas al principio
-del script.
+`statusline.sh` forwards the payload to `~/.orca/agent-hooks/claude-statusline.sh` when that
+file exists and is executable. That is Orca telemetry: Orca installs its own statusline,
+**which prints nothing**, and can overwrite the key in `settings.json`. If you do not use
+Orca the block is a no-op (the `-x` guard fails). To drop it, delete the four lines at the
+top of the script.
 
-## Diseño
+## Design
 
-`docs/design.md` tiene el razonamiento completo: qué trae y qué no trae el payload del
-statusline, por qué la branch se lee del disco, por qué el umbral es absoluto, el comando
-`/arbol`, y la lista de lo que se probó y no se puede hacer.
+`docs/design.md` (in Spanish) carries the full reasoning: what the statusline payload does
+and does not contain, why the branch is read from disk, why the threshold is absolute, the
+`/arbol` command, and the list of things that were tried and cannot be done.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
